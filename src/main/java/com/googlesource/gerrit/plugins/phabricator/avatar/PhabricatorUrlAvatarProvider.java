@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.googlesource.gerrit.plugins.phabricator-avatar.external;
+package com.googlesource.gerrit.plugins.phabricator.avatar.external;
 
 import com.google.gerrit.common.Nullable;
 import com.google.gerrit.extensions.annotations.Listen;
