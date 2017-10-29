@@ -53,7 +53,6 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
   private static final String EMAIL_PLACEHOLDER = "${email}";
 
   private final String pluginName;
-  private final boolean ssl;
   private String url;
   private String avatarChangeUrl;
   private String sizeParameter;
@@ -63,14 +62,12 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
 
   @Inject
   PhabricatorUrlAvatarProvider(PluginConfigFactory cfgFactory,
-      @PluginName String pluginName,
-      @CanonicalWebUrl @Nullable String canonicalUrl) {
+      @PluginName String pluginName) {
     this.pluginName = pluginName;
     PluginConfig cfg = cfgFactory.getFromGerritConfig(pluginName);
     url = cfg.getString("url");
     avatarChangeUrl = cfg.getString("changeUrl");
     sizeParameter = cfg.getString("sizeParameter");
-    ssl = canonicalUrl != null && canonicalUrl.startsWith("https://");
     token = cfg.getString("token");
 
     this.phabConduitConnection = new PhabConduitConnection(url);
@@ -86,7 +83,7 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     }
 
     try {
-      return getUserProfileImage(forUser).toString();
+      return getUserProfileImage(forUser).getProfileIamge();
     } catch (PhabConduitException e) {
       // TODO: return default image
       return "";
@@ -144,7 +141,7 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     JsonElement queryResultEntryValue = queryResultData;
     UserLdap queryResultUserLdap = gson.fromJson(queryResultEntryValue, UserLdap.class);
     if (queryResultUserLdap.getLdapUserName().equals(forUser.getUserName())) {
-      result = queryResultUserLdap.getProfileIamge();
+      result = queryResultUserLdap;
     }
 
     /*
