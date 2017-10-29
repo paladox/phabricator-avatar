@@ -23,13 +23,27 @@ import com.google.gerrit.server.avatar.AvatarProvider;
 import com.google.gerrit.server.config.CanonicalWebUrl;
 import com.google.gerrit.server.config.PluginConfig;
 import com.google.gerrit.server.config.PluginConfigFactory;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
-import com.googlesource.gerrit.plugins.phabricator.avatar.conduit.PhabConduit;
+import com.googlesource.gerrit.plugins.phabricator.avatar.results.UserLdap;
+import com.googlesource.gerrit.plugins.phabricator.avatar.results.UserLdapQuery;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 @Listen
 @Singleton
@@ -40,10 +54,12 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
 
   private final String pluginName;
   private final boolean ssl;
-  private String externalAvatarUrl;
+  private String url;
   private String avatarChangeUrl;
   private String sizeParameter;
-  private final PhabConduit conduit;
+  private String token;
+  private final PhabConduitConnection phabConduitConnection;
+  private final Gson gson;
 
   @Inject
   PhabricatorUrlAvatarProvider(PluginConfigFactory cfgFactory,
@@ -51,31 +67,21 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
       @CanonicalWebUrl @Nullable String canonicalUrl) {
     this.pluginName = pluginName;
     PluginConfig cfg = cfgFactory.getFromGerritConfig(pluginName);
-    externalAvatarUrl = cfg.getString("url");
+    url = cfg.getString("url");
     avatarChangeUrl = cfg.getString("changeUrl");
     sizeParameter = cfg.getString("sizeParameter");
     ssl = canonicalUrl != null && canonicalUrl.startsWith("https://");
+    token = cfg.getString("token");
 
-    this.conduit = new PhabConduit(externalAvatarUrl);
+    this.phabConduitConnection = new PhabConduitConnection(url);
   }
 
   @Override
   public String getUrl(IdentifiedUser forUser, int imageSize) {
-    if (externalAvatarUrl == null) {
-      Logger log = LoggerFactory.getLogger(ExternalUrlAvatarProvider.class);
-      log.warn("Avatar URL is not configured, cannot show avatars. Please configure plugin."
+    if (url == null) {
+      Logger log = LoggerFactory.getLogger(PhabricatorUrlAvatarProvider.class);
+      log.warn("Phabricator URL is not configured. Please configure plugin."
           + pluginName + ".url in etc/gerrit.config");
-      return null;
-    }
-
-    // it is unrealistic that all users share the same avatar image, thus we're
-    // warning if we can't find our marker
-    if (!externalAvatarUrl.contains(USER_PLACEHOLDER)
-        && !externalAvatarUrl.contains(EMAIL_PLACEHOLDER)) {
-      Logger log = LoggerFactory.getLogger(ExternalUrlAvatarProvider.class);
-      log.warn("Avatar provider url '" + externalAvatarUrl
-          + "' does not contain " + USER_PLACEHOLDER
-          + ", so cannot replace it with username");
       return null;
     }
 
@@ -84,12 +90,18 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     if (ssl && externalAvatarUrl.startsWith("http://")) {
       externalAvatarUrl = externalAvatarUrl.replace("http://", "https://");
     }
-    StringBuilder avatarUrl = new StringBuilder();
-    String userReplacedAvatarURL = replaceInUrl(USER_PLACEHOLDER,
-        externalAvatarUrl, forUser.getUserName());
+    //StringBuilder avatarUrl = new StringBuilder();
+    //String userReplacedAvatarURL = replaceInUrl(USER_PLACEHOLDER,
+    //    externalAvatarUrl, forUser.getUserName());
+    try {
+      return getUserProfileImage(forUser);
+    } catch (PhabConduitException e) {
+      // todo, return default image
+      return false;
+    }
     avatarUrl.append(replaceInUrl(EMAIL_PLACEHOLDER, userReplacedAvatarURL,
         forUser.getAccount().getPreferredEmail()));
-    if (imageSize > 0 && sizeParameter != null) {
+    /*if (imageSize > 0 && sizeParameter != null) {
       if (avatarUrl.indexOf("?") < 0) {
         avatarUrl.append("?");
       } else {
@@ -97,8 +109,8 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
       }
       avatarUrl.append(sizeParameter.replaceAll("\\$\\{size\\}",
           Integer.toString(imageSize)));
-    }
-    return avatarUrl.toString();
+    }*/
+    //return avatarUrl.toString();
   }
 
   @Override
@@ -126,5 +138,32 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
 
     // as we can't assume anything of 'replacement', we're URL encoding it
     return url.replace(placeholder, Url.encode(replacement));
+  }
+
+  private UserLdapQuery getUserProfileImage(IdentifiedUser forUser) throws PhabConduitException {
+    Map<String, Object> params = new HashMap<>();
+    params.put("ldapnames", Arrays.asList(forUser.getUserName()));
+
+    JsonElement callResult = phabConduitConnection.call("user.ldapquery", params, token);
+    UserLdapQuery queryResult = gson.fromJson(callResult, UserLdapQuery.class);
+    JsonObject queryResultData = queryResult.getResultZero().getAsJsonObject();
+
+    UserLdap result = null;
+    JsonElement queryResultEntryValue = queryResultData.getValue();
+    UserLdap queryResultUserLdap = gson.fromJson(queryResultEntryValue, UserLdap.class);
+    if (queryResultUserLdap.getLdapUserName().equals(forUser.getUserName())) {
+      result = queryResultUserLdap.getProfileIamge();
+    }
+
+    /*
+    for (Entry<String, JsonElement> queryResultEntry : queryResultData.entrySet()) {
+      JsonElement queryResultEntryValue = queryResultEntry.getValue();
+      UserLdap queryResultUserLdap = gson.fromJson(queryResultEntryValue, UserLdap.class);
+      if (queryResultUserLdap.getLdapName().equals(forUser.getUserName())) {
+        result = queryResultUserLdap.getProfileIamge();
+      }
+    }*/
+
+    return result;
   }
 }
