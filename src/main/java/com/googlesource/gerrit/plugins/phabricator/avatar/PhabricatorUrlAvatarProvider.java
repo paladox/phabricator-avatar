@@ -85,23 +85,15 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
       return null;
     }
 
-    // as the Gerrit only sends a 302 Found, the avatar is loaded by the user
-    // agent and thus SSL matters for the avatar image, if Gerrit uses SSL
-    if (ssl && externalAvatarUrl.startsWith("http://")) {
-      externalAvatarUrl = externalAvatarUrl.replace("http://", "https://");
-    }
-    //StringBuilder avatarUrl = new StringBuilder();
-    //String userReplacedAvatarURL = replaceInUrl(USER_PLACEHOLDER,
-    //    externalAvatarUrl, forUser.getUserName());
     try {
-      return getUserProfileImage(forUser);
+      return getUserProfileImage(forUser).toString();
     } catch (PhabConduitException e) {
       // todo, return default image
       return false;
     }
-    avatarUrl.append(replaceInUrl(EMAIL_PLACEHOLDER, userReplacedAvatarURL,
+    /*avatarUrl.append(replaceInUrl(EMAIL_PLACEHOLDER, userReplacedAvatarURL,
         forUser.getAccount().getPreferredEmail()));
-    /*if (imageSize > 0 && sizeParameter != null) {
+    if (imageSize > 0 && sizeParameter != null) {
       if (avatarUrl.indexOf("?") < 0) {
         avatarUrl.append("?");
       } else {
@@ -109,8 +101,8 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
       }
       avatarUrl.append(sizeParameter.replaceAll("\\$\\{size\\}",
           Integer.toString(imageSize)));
-    }*/
-    //return avatarUrl.toString();
+    }
+    //return avatarUrl.toString();*/
   }
 
   @Override
