@@ -88,8 +88,8 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     try {
       return getUserProfileImage(forUser).toString();
     } catch (PhabConduitException e) {
-      // todo, return default image
-      return false;
+      // TODO: return default image
+      return "";
     }
     /*avatarUrl.append(replaceInUrl(EMAIL_PLACEHOLDER, userReplacedAvatarURL,
         forUser.getAccount().getPreferredEmail()));
@@ -132,7 +132,7 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     return url.replace(placeholder, Url.encode(replacement));
   }
 
-  private UserLdapQuery getUserProfileImage(IdentifiedUser forUser) throws PhabConduitException {
+  private UserLdap getUserProfileImage(IdentifiedUser forUser) throws PhabConduitException {
     Map<String, Object> params = new HashMap<>();
     params.put("ldapnames", Arrays.asList(forUser.getUserName()));
 
@@ -141,7 +141,7 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     JsonObject queryResultData = queryResult.getResultZero().getAsJsonObject();
 
     UserLdap result = null;
-    JsonElement queryResultEntryValue = queryResultData.getValue();
+    JsonElement queryResultEntryValue = queryResultData;
     UserLdap queryResultUserLdap = gson.fromJson(queryResultEntryValue, UserLdap.class);
     if (queryResultUserLdap.getLdapUserName().equals(forUser.getUserName())) {
       result = queryResultUserLdap.getProfileIamge();

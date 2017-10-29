@@ -107,7 +107,7 @@ class PhabConduitConnection {
     try {
       response = getClient().execute(httppost);
     } catch (IOException e) {
-      throw new ConduitException("Could not execute Phabricator API call", e);
+      throw new PhabConduitException("Could not execute Phabricator API call", e);
     }
     try {
       log.trace("Phabricator HTTP response status: " + response.getStatusLine());
@@ -116,11 +116,11 @@ class PhabConduitConnection {
       try {
         entityString = EntityUtils.toString(entity);
       } catch (IOException e) {
-        throw new ConduitException("Could not read the API response", e);
+        throw new PhabConduitException("Could not read the API response", e);
       }
 
       log.trace("Phabricator response " + entityString);
-      CallCapsule callCapsule = gson.fromJson(entityString, PhabCallCapsule.class);
+      PhabCallCapsule callCapsule = gson.fromJson(entityString, PhabCallCapsule.class);
       log.trace("callCapsule.result: " + callCapsule.getResult());
       log.trace("callCapsule.error_code: " + callCapsule.getErrorCode());
       log.trace("callCapsule.error_info: " + callCapsule.getErrorInfo());
