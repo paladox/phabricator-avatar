@@ -26,6 +26,8 @@ import com.google.gerrit.server.config.PluginConfigFactory;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
+import com.googlesource.gerrit.plugins.phabricator.avatar.conduit.PhabConduit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +43,7 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
   private String externalAvatarUrl;
   private String avatarChangeUrl;
   private String sizeParameter;
+  private final PhabConduit conduit;
 
   @Inject
   PhabricatorUrlAvatarProvider(PluginConfigFactory cfgFactory,
@@ -52,6 +55,8 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     avatarChangeUrl = cfg.getString("changeUrl");
     sizeParameter = cfg.getString("sizeParameter");
     ssl = canonicalUrl != null && canonicalUrl.startsWith("https://");
+
+    this.conduit = new PhabConduit(externalAvatarUrl);
   }
 
   @Override
