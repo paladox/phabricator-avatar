@@ -71,6 +71,7 @@ public class PhabricatorUrlAvatarProvider implements AvatarProvider {
     token = cfg.getString("token");
 
     this.phabConduitConnection = new PhabConduitConnection(url);
+    this.gson = new Gson();
   }
 
   @Override
